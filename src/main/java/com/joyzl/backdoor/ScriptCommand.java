@@ -11,22 +11,33 @@ import com.joyzl.logger.Logger;
  * 
  * @author ZhangXi 2026年9月1日
  */
-public class ScriptCommand implements Runnable {
+public class ScriptCommand implements MultipleMessage, Runnable {
 
 	private final Path dir;
 	private final String command;
-	private final String readline;
+	private final String input;
 
 	/**
 	 * 执行脚本
 	 * 
 	 * @param command 脚本文件
-	 * @param readline 标准输入
+	 * @param input 标准输入
 	 */
-	public ScriptCommand(Path dir, String command, String readline) {
+	public ScriptCommand(Path dir, String command, String input) {
 		this.command = command;
-		this.readline = readline;
+		this.input = input;
 		this.dir = dir;
+	}
+
+	public ScriptCommand(String command, String input) {
+		this.command = command;
+		this.input = input;
+		this.dir = null;
+	}
+
+	@Override
+	public MultipleMessage one() {
+		return this;
 	}
 
 	@Override
@@ -75,9 +86,9 @@ public class ScriptCommand implements Runnable {
 			}
 
 			final Process process = builder.start();
-			if (readline != null && readline.length() > 0) {
+			if (input != null && input.length() > 0) {
 				final OutputStream output = process.getOutputStream();
-				output.write(readline.getBytes(StandardCharsets.UTF_8));
+				output.write(input.getBytes(StandardCharsets.UTF_8));
 				output.write('\n');
 				output.flush();
 				// 等待读取
@@ -87,5 +98,13 @@ public class ScriptCommand implements Runnable {
 		} catch (Exception e) {
 			Logger.error(e);
 		}
+	}
+
+	public String getCommand() {
+		return command;
+	}
+
+	public String getInput() {
+		return input;
 	}
 }

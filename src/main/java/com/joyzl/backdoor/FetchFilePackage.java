@@ -15,11 +15,11 @@ import com.joyzl.network.buffer.DataBuffer;
 import com.joyzl.network.chain.UDPSlave;
 
 /**
- * 文件包
+ * 文件包接收
  * 
  * @author ZhangXi 2026年9月1日
  */
-public final class FilePackage implements Runnable, Closeable {
+public final class FetchFilePackage implements Runnable, Closeable {
 
 	// 远程主动发送包名称和大小，创建此对象
 	// 本地逐块数据获取，直至全部下载
@@ -41,7 +41,7 @@ public final class FilePackage implements Runnable, Closeable {
 	 * @param name 文件包名称（含扩展名）
 	 * @param total 文件包字节总数
 	 */
-	FilePackage(UDPSlave slave, Path dir, String name, int total) {
+	FetchFilePackage(UDPSlave slave, Path dir, String name, int total) {
 		this.slave = slave;
 		this.total = total;
 		this.name = name;

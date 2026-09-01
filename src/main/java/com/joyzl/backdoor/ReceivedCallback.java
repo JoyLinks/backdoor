@@ -5,13 +5,15 @@
  */
 package com.joyzl.backdoor;
 
+import com.joyzl.network.chain.UDPSlave;
+
 /**
- * 回调函数
+ * 消息收到通知
  * 
  * @author simon (ZhangXi TEL:13883833982)
  * @date 2025年11月21日
  */
-public interface Callback<T> {
+public interface ReceivedCallback<T> {
 
-	void received(T result);
+	void received(UDPSlave slave, T result);
 }

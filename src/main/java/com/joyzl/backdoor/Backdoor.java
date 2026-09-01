@@ -19,7 +19,7 @@ import com.joyzl.network.chain.UDPSlave;
 import com.joyzl.network.codec.KeyValueCoder;
 
 /**
- * UDP 发现与远程维护
+ * 发现与远程维护端
  * 
  * @author simon (ZhangXi TEL:13883833982)
  * @date 2026年1月7日
@@ -27,10 +27,10 @@ import com.joyzl.network.codec.KeyValueCoder;
 public final class Backdoor {
 
 	private UDPServer server;
-	private Callback<String> onMessage;
-	private Callback<Parameters> onSetting;
-	private Callback<FilePackage> onPackage;
-	private Callback<ScriptCommand> onCommand;
+	private ReceivedCallback<String> onMessage;
+	private ReceivedCallback<Parameters> onSetting;
+	private ReceivedCallback<FetchFilePackage> onPackage;
+	private ReceivedCallback<ScriptCommand> onCommand;
 	// 接收文件存储目录
 	private Path dir = Path.of("stpfiles");
 
@@ -76,19 +76,19 @@ public final class Backdoor {
 		}
 	}
 
-	public void setOnMessage(Callback<String> handler) {
+	public void setOnMessage(ReceivedCallback<String> handler) {
 		onMessage = handler;
 	}
 
-	public void setOnSetting(Callback<Parameters> handler) {
+	public void setOnSetting(ReceivedCallback<Parameters> handler) {
 		onSetting = handler;
 	}
 
-	public void setOnPackage(Callback<FilePackage> handler) {
+	public void setOnPackage(ReceivedCallback<FetchFilePackage> handler) {
 		onPackage = handler;
 	}
 
-	public void setOnCommand(Callback<ScriptCommand> handler) {
+	public void setOnCommand(ReceivedCallback<ScriptCommand> handler) {
 		onCommand = handler;
 	}
 
@@ -96,6 +96,7 @@ public final class Backdoor {
 
 		@Override
 		public void connected(UDPSlave slave) throws Exception {
+			// UDP 不使用
 		}
 
 		@Override
@@ -118,10 +119,10 @@ public final class Backdoor {
 				// 通知文件包下载
 				final String name = buffer.readString();
 				final int total = buffer.readVarint();
-				return new FilePackage(slave, dir, name, total);
+				return new FetchFilePackage(slave, dir, name, total);
 			} else if (value == 0x03) {
 				// 文件内容数据块
-				final FilePackage filePackage = slave.getContext(FilePackage.class);
+				final FetchFilePackage filePackage = slave.getContext(FetchFilePackage.class);
 				if (filePackage != null) {
 					filePackage.save(buffer);
 					return filePackage;
@@ -143,34 +144,34 @@ public final class Backdoor {
 				// MESSAGE
 				if (message instanceof String text) {
 					if (onMessage != null) {
-						onMessage.received(text);
+						onMessage.received(slave, text);
 					}
 					slave.send("OK");
 				} else
 				// SETTING
 				if (message instanceof Parameters parameters) {
 					if (onSetting != null) {
-						onSetting.received(parameters);
+						onSetting.received(slave, parameters);
 					}
 					slave.send(parameters);
 				} else
 				// FILE PACKAGE
-				if (message instanceof FilePackage filePackage) {
+				if (message instanceof FetchFilePackage filePackage) {
 					if (filePackage.nextBlock()) {
 						slave.setContext(filePackage);
 						slave.send(filePackage);
 					} else {
 						filePackage.close();
-						slave.removeContext(FilePackage.class);
+						slave.removeContext(FetchFilePackage.class);
 						if (onPackage != null) {
-							onPackage.received(filePackage);
+							onPackage.received(slave, filePackage);
 						}
 					}
 				} else
 				// COMMAND
 				if (message instanceof ScriptCommand command) {
 					if (onCommand != null) {
-						onCommand.received(command);
+						onCommand.received(slave, command);
 					}
 					Executor.submit(command);
 				}
@@ -188,7 +189,7 @@ public final class Backdoor {
 				// 发送设置参数响应
 				KeyValueCoder.encode(parameters, buffer);
 				buffer.writeByte(0x05);
-			} else if (message instanceof FilePackage filePackage) {
+			} else if (message instanceof FetchFilePackage filePackage) {
 				// 发送文件块请求
 				buffer.writeVarint(filePackage.nextOffset());
 				buffer.writeVarint(filePackage.nextLength());

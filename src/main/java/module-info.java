@@ -3,7 +3,7 @@
  * 本软件根据 Apache License 2.0 开源，详见 LICENSE 文件。
  */
 module com.joyzl.backdoor {
-	requires com.joyzl.network;
+	requires transitive com.joyzl.network;
 	requires com.joyzl.logger;
 
 	exports com.joyzl.backdoor;
