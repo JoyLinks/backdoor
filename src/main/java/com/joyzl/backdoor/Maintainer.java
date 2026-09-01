@@ -58,13 +58,18 @@ public class Maintainer {
 		slave.send(new Parameters());
 	}
 
-	public MultipleSends scans(InetSocketAddress address, MultipleProgress handler) throws UnknownHostException {
+	public MultipleSends scans(InetSocketAddress address, MultipleProgress handler) {
 		final MultipleSends scanner = new MultipleSends(new Parameters(), handler);
 		final byte[] b4 = address.getAddress().getAddress();
 		final int port = address.getPort();
-		for (int i = 1; i < 254; i++) {
-			b4[3] = (byte) i;
-			scanner.slaves().add(new UDPSlave(server, new InetSocketAddress(InetAddress.getByAddress(b4), port)));
+		try {
+			for (int i = 1; i < 254; i++) {
+				b4[3] = (byte) i;
+				scanner.slaves().add(new UDPSlave(server, new InetSocketAddress(InetAddress.getByAddress(b4), port)));
+			}
+		} catch (UnknownHostException e) {
+			// 这个异常不会出现
+			throw new RuntimeException(e);
 		}
 		scanner.start();
 		return scanner;
@@ -193,5 +198,9 @@ public class Maintainer {
 		public void error(UDPSlave slave, Throwable e) {
 			e.printStackTrace();
 		}
+	}
+
+	public void close() {
+		server.close();
 	}
 }
