@@ -64,9 +64,9 @@ public class PushFilePackage implements MultipleMessage, Closeable {
 		buffer.write(input, length);
 	}
 
-	/** 0~100 */
+	/** 0~1000 ‰ */
 	public int percentage() {
-		return (int) ((offset + length) * 1D / total * 100);
+		return (int) ((offset + length) * 1D / total * 1000);
 	}
 
 	public String name() {

