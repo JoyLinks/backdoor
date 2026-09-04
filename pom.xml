@@ -6,7 +6,7 @@
 
 	<groupId>com.joyzl</groupId>
 	<artifactId>backdoor</artifactId>
-	<version>1.0.2</version>
+	<version>1.0.3</version>
 	<name>backdoor</name>
 	<description>提供客户端程序基于局域网的远程维护支持</description>
 	<url>https://github.com/JoyLinks/backdoor</url>

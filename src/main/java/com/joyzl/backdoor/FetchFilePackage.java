@@ -71,16 +71,16 @@ public final class FetchFilePackage implements Runnable, Closeable {
 	@Override
 	public void run() {
 		// 执行超时检查
-		// 6秒超时，30分钟放弃
+		// 4秒超时，超过1分钟放弃
 		final long time = System.currentTimeMillis() - timestamp;
 		try {
-			if (time > 1000 * 60 * 30) {
+			if (time > 60000) {
 				// 放弃重试
 				close();
 				if (future != null) {
 					future.cancel(false);
 				}
-			} else if (time > 6000) {
+			} else if (time > 4000) {
 				if (nextBlock()) {
 					// 重试请求
 					slave.send(this);

@@ -15,5 +15,5 @@ public interface MultipleMessage {
 
 	/** 返回发送实例，如果命令实例可发送给多个终端则返回相同同实例，否则应返回新实例 */
 	MultipleMessage one();
-	// Multiple
+
 }

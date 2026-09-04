@@ -49,14 +49,14 @@ public class MultipleSends implements Runnable {
 					progress.update(slave);
 				}
 
-				slave.send(message);
+				slave.send(message.one());
 
 				future = this.future;
 				if (future == null || future.isCancelled()) {
 					return;
 				} else {
 					// 大量群发时减少网络压力
-					Thread.sleep(100 + rand.nextInt(2000));
+					Thread.sleep(50 + rand.nextInt(1000));
 				}
 			}
 
