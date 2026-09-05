@@ -169,7 +169,6 @@ public class Maintainer {
 			} else if (message instanceof ScriptCommand command) {
 				// 发送执行命令
 				buffer.writeString(command.getCommand());
-				buffer.writeString(command.getInput());
 				buffer.writeBoolean(command.getExit());
 				buffer.writeByte(0x06);
 			} else {

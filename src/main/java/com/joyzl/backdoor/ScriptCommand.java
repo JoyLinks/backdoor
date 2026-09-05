@@ -1,7 +1,5 @@
 package com.joyzl.backdoor;
 
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import com.joyzl.logger.Logger;
@@ -15,32 +13,22 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 
 	private final Path dir;
 	private final String command;
-	private final String input;
 	private final boolean exit;
 
 	/**
 	 * 执行脚本
 	 * 
-	 * @param command 脚本文件
-	 * @param input 标准输入
+	 * @param command 命令文件
+	 * @param exit 是否退出当前程序，如果执行更新则需要退出当前程序，否则无法覆盖文件
 	 */
-	public ScriptCommand(Path dir, String command, String input, boolean exit) {
+	public ScriptCommand(Path dir, String command, boolean exit) {
 		this.command = command;
-		this.input = input;
 		this.exit = exit;
 		this.dir = dir;
 	}
 
-	public ScriptCommand(String command, String input, boolean exit) {
-		this.command = command;
-		this.input = input;
-		this.exit = exit;
-		this.dir = null;
-	}
-
 	public ScriptCommand(String command, boolean exit) {
 		this.command = command;
-		this.input = null;
 		this.exit = exit;
 		this.dir = null;
 	}
@@ -53,62 +41,57 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 	@Override
 	public void run() {
 		try {
-			final Path path = dir.toAbsolutePath().getParent();
-			Logger.info("BACKDOOR CMD ", command);
-			Logger.info("BACKDOOR DIR ", path);
+			// 工作目录，当前程序运行目录
+			final Path work = dir.toAbsolutePath().getParent();
+			Logger.info("BACKDOOR DIR ", work);
 
+			// 启动的脚本进程应脱离Java进程
+			// 否则Java进程退出后会连带脚本进程强制被结束
 			final ProcessBuilder builder = new ProcessBuilder();
-			// Java进程在更新时会被停止
-			// 因此脚本日志应有脚本自身完善
+			builder.environment().put("JAVA_HOME", System.getProperty("java.home"));
+			// Java进程在更新时会被停止，指定输出被中断
 			// builder.redirectOutput(path.resolve("process.log").toFile());
 			// builder.redirectError(path.resolve("process.log").toFile());
 			builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
 			builder.redirectError(ProcessBuilder.Redirect.DISCARD);
-			builder.directory(path.toFile());
+			builder.directory(work.toFile());
 
-			String text = System.getProperty("java.home");
-			builder.environment().put("JAVA_HOME", text);
-
-			text = System.getProperty("os.name").toLowerCase();
-			if (text.contains("windows")) {
-				/*-
-				 * Windows
-				 * powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File command
-				 * cmd.exe /c start /b command
-				 */
-				text = command.toLowerCase();
-				if (text.endsWith(".ps1")) {
-					builder.command("powershell.exe", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", command);
-				} else if (text.endsWith(".cmd") || text.endsWith(".bat")) {
-					builder.command("cmd.exe", "/c", "start", "/b", command);
+			final String os = System.getProperty("os.name").toLowerCase();
+			if (os.contains("windows")) {
+				String cmd = command.toLowerCase();
+				if (cmd.endsWith(".ps1")) {
+					/*-
+					 * Windows
+					 * powershell.exe -Command "Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -Command "& \"stpfiles\\update.ps1\" *>> script.log"' -WindowStyle Hidden
+					 */
+					cmd = "Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -Command \"& \\\"" + command + "\\\" *>> script.log\"' -WindowStyle Hidden";
+					builder.command("powershell.exe", "-Command", cmd);
+				} else if (cmd.endsWith(".cmd") || cmd.endsWith(".bat")) {
+					/*-
+					 * Windows
+					 * cmd.exe /c start /b "" "stpfiles\\update.ps1" >> script.log 2>&1
+					 */
+					builder.command("cmd.exe", "/c", "start /b \"\" \"" + command + "\" >> script.log 2>&1");
 				} else {
 					Logger.info("BACKDOOR ", "无效脚本 ", command);
 					return;
 				}
 			} else {
-				/*-
-				 * Linux
-				 * bash stpfiles/update.sh
-				 */
-				text = command.toLowerCase();
-				if (text.endsWith(".sh")) {
-					builder.command("bash", command);
+				String cmd = command.toLowerCase();
+				if (cmd.endsWith(".sh")) {
+					/*-
+					 * Linux
+					 * bash -c nohup 'stpfiles/update.sh' >> script.log 2>&1 &
+					 */
+					builder.command("bash", "-c", "nohup '" + command + "' >> script.log 2>&1 &");
 				} else {
 					Logger.info("BACKDOOR ", "无效脚本 ", command);
 					return;
 				}
 			}
 
-			final Process process = builder.start();
-			if (input != null && input.length() > 0) {
-				final OutputStream output = process.getOutputStream();
-				output.write(input.getBytes(StandardCharsets.UTF_8));
-				output.write('\n');
-				output.flush();
-				// 等待读取
-				Thread.sleep(1000);
-				output.close();
-			}
+			Logger.info(String.join(" ", builder.command()));
+			builder.start();
 		} catch (Exception e) {
 			Logger.error(e);
 		} finally {
@@ -120,10 +103,6 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 
 	public String getCommand() {
 		return command;
-	}
-
-	public String getInput() {
-		return input;
 	}
 
 	public boolean getExit() {
