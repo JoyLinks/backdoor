@@ -81,9 +81,9 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 				if (cmd.endsWith(".sh")) {
 					/*-
 					 * Linux
-					 * bash -c nohup 'stpfiles/update.sh' >> script.log 2>&1 &
+					 * bash -c nohup bash 'stpfiles/update.sh' >> script.log 2>&1 &
 					 */
-					builder.command("bash", "-c", "nohup '" + command + "' >> script.log 2>&1 &");
+					builder.command("bash", "-c", "nohup bash '" + command + "' >> script.log 2>&1 &");
 				} else {
 					Logger.info("BACKDOOR ", "无效脚本 ", command);
 					return;
