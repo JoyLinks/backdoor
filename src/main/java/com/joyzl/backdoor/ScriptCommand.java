@@ -62,9 +62,9 @@ public class ScriptCommand implements MultipleMessage, Runnable {
 				if (cmd.endsWith(".ps1")) {
 					/*-
 					 * Windows
-					 * powershell.exe -Command "Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -Command "& \"stpfiles\\update.ps1\" *>> script.log"' -WindowStyle Hidden
+					 * powershell.exe -Command "Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -Command "& \"stpfiles\\update.ps1\" >> script.log 2>&1"' -WindowStyle Hidden
 					 */
-					cmd = "Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -Command \"& \\\"" + command + "\\\" *>> script.log\"' -WindowStyle Hidden";
+					cmd = "Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -Command \"& \\\"" + command + "\\\" >> script.log 2>&1\"' -WindowStyle Hidden";
 					builder.command("powershell.exe", "-Command", cmd);
 				} else if (cmd.endsWith(".cmd") || cmd.endsWith(".bat")) {
 					/*-
